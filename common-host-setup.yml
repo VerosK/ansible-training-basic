@@ -89,7 +89,7 @@
       dest: /etc/ssh/sshd_config
       line: "PasswordAuthentication yes" 
       regexp: "^PasswordAuthentication" 
-    notify: "restart ssh"
+    notify: "Restart ssh"
 
 
   handlers:   
