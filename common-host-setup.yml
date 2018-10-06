@@ -70,13 +70,17 @@
     when: 
         - with_firewalld
 
-  - name: Enable ports 22
+  - name: Enable ports
     firewalld:
         permanent: yes
         immediate: yes
-        service: "ssh"
+        service: "{{ item }}"
         zone: public
         state: enabled
+    loop:
+       - ssh
+       - http
+       - https
     when:
         - with_firewalld
 
