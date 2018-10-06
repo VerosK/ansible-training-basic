@@ -1,0 +1,95 @@
+---
+- name: Start up
+  hosts: all
+  user: root
+  vars:
+     managing_user: ansible
+     managing_user_password: 'nbusr124'
+     with_firewalld: true
+
+  tasks:
+  - name: Create training user with password XXX
+    user:
+        name: '{{ managing_user }}'
+        comment: "Ansible" 
+        password: "{{ managing_user_password|password_hash('sha512', 65534|random(seed=inventory_hostname)|string) }}"
+        createhome: yes
+        shell: /bin/bash
+
+  - name: Add the user to sudoers
+    template:
+       src: sudoers_ansible.j2
+       dest: '/etc/sudoers.d/{{ managing_user }}'
+
+  - name: Install epel
+    yum: 
+        name: epel-release 
+        state: installed
+    when: ansible_os_family == "RedHat"
+
+  - name: Flush apt cache
+    apt:
+        cache_valid_time: 600
+        name: mc
+        state: present
+    when: ansible_os_family == "Debian"
+
+  - name: Install needed packages
+    package: name={{item}} state=installed
+    with_items: 
+    - vim
+    - git
+    - psmisc
+    - tmux
+    - htop
+    - tree
+    - bash-completion
+    - mc
+    - mosh
+
+  - name: Install haveged
+    package: name=haveged state=installed
+
+  - name: Start haveged
+    service: 
+       name: haveged 
+       state: started
+
+  - name: Install firewalld
+    yum: 
+       name: firewalld
+       state: present
+    when: ansible_os_family == "RedHat"
+
+
+  - name: Setup firewalld
+    service:
+       name: firewalld
+       state: started
+       enabled: true
+    when: 
+        - with_firewalld
+
+  - name: Enable ports 22
+    firewalld:
+        permanent: yes
+        immediate: yes
+        service: "ssh"
+        zone: public
+        state: enabled
+    when:
+        - with_firewalld
+
+  - name: Enable password auth 
+    lineinfile:
+      dest: /etc/ssh/sshd_config
+      line: "PasswordAuthentication yes" 
+      regexp: "^PasswordAuthentication" 
+    notify: "restart ssh"
+
+
+  handlers:   
+    - name: "Restart ssh" 
+      service: 
+         name: sshd 
+         state: reloaded         
